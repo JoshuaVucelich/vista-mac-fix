@@ -22,3 +22,11 @@ The jar is `build/libs/vista_mac_fix-1.0.0.jar`. Put it in the client `mods` fol
 2. Look for `Vista Mac Fix 1.0.0 loaded. Live viewfinder skip active=true` on a Mac.
 3. Join the world that has the powered television. The game should stay open. The TV shows a flat dark screen instead of the camera picture.
 4. On Windows or Linux the same log line says `active=false`, and the television still shows the live picture.
+
+## Download
+
+Not on Modrinth yet. Build with `./gradlew build`.
+
+## License
+
+[MIT](LICENSE). Copyright (c) 2026 Joshua Vucelich.
