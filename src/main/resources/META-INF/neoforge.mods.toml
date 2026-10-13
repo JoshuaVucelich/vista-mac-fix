@@ -29,20 +29,13 @@ side="BOTH"
 [[dependencies.vista_mac_fix]]
 modId="sodium"
 type="optional"
-versionRange="*"
+versionRange="[0.8.13,)"
 ordering="AFTER"
 side="CLIENT"
 
 [[dependencies.vista_mac_fix]]
 modId="sable"
 type="optional"
-versionRange="*"
-ordering="AFTER"
-side="CLIENT"
-
-[[dependencies.vista_mac_fix]]
-modId="vista"
-type="optional"
-versionRange="*"
+versionRange="[2.0.3,)"
 ordering="AFTER"
 side="CLIENT"
