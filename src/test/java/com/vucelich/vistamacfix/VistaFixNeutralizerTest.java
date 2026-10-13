@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.zip.ZipFile;
 
 import org.junit.jupiter.api.Test;
 import org.objectweb.asm.ClassReader;
@@ -30,12 +29,12 @@ class VistaFixNeutralizerTest {
 
     @Test
     void brokenMarkerMatchesVistafixAndNotAHarmlessClass() throws Exception {
-        Path jar = Path.of("/tmp/scanmods/VistaAeronauticsFix-1.0.0.jar");
-        assertTrue(Files.isRegularFile(jar), "vistafix jar");
+        var resource = VistaFixNeutralizerTest.class.getResource(
+                "/net/mehvahdjukaar/vistafix/mixin/TvRendererMixin.class");
+        assertTrue(resource != null, "vistafix mixin on the test classpath");
         byte[] bytes;
-        try (ZipFile zip = new ZipFile(jar.toFile())) {
-            var entry = zip.getEntry("net/mehvahdjukaar/vistafix/mixin/TvRendererMixin.class");
-            bytes = zip.getInputStream(entry).readAllBytes();
+        try (var in = resource.openStream()) {
+            bytes = in.readAllBytes();
         }
         assertTrue(VistaFixNeutralizer.bytesCallMissingFrameBuilder(bytes));
         assertFalse(VistaFixNeutralizer.bytesCallMissingFrameBuilder(

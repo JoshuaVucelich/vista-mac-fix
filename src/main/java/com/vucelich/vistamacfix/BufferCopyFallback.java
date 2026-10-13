@@ -10,6 +10,7 @@ import org.lwjgl.opengl.GL21;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL31;
 import org.lwjgl.opengl.GL31C;
+import org.lwjgl.opengl.GL32;
 import org.lwjgl.system.MemoryUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +55,10 @@ public final class BufferCopyFallback {
             if (LOGGED_FAILURE.compareAndSet(false, true)) {
                 LOGGER.warn("Vista Mac Fix: CPU buffer copy failed; the Apple copy was skipped", error);
             } else if (LOGGED_LATER_FAILURE.compareAndSet(false, true)) {
-                LOGGER.warn("Vista Mac Fix: later CPU buffer copies are also being skipped");
+                LOGGER.warn(
+                        "Vista Mac Fix: later CPU buffer copies are also being skipped ({})",
+                        error.getClass().getName()
+                );
             }
         }
     }
@@ -114,10 +118,9 @@ public final class BufferCopyFallback {
      * Rejects a mapped read that starts before the map or extends past
      * {@code GL_BUFFER_MAP_LENGTH}. Returns the byte offset from the map start.
      */
-    static long requireInsideMappedRange(long offset, int mapOffset, int mapLength, int count) {
+    static long requireInsideMappedRange(long offset, long mapOffset, long mapLength, int count) {
         long delta = offset - mapOffset;
-        long length = mapLength;
-        if (delta < 0 || length < 0 || delta > length || count < 0 || count > length - delta) {
+        if (delta < 0 || mapLength < 0 || delta > mapLength || count < 0 || count > mapLength - delta) {
             throw new IllegalStateException("read is outside the mapped range");
         }
         return delta;
@@ -199,9 +202,10 @@ public final class BufferCopyFallback {
                     throw new IllegalStateException("mapped buffer has a null pointer");
                 }
                 int mapOffset = GL15.glGetBufferParameteri(target, GL30.GL_BUFFER_MAP_OFFSET);
-                int mapLength = GL15.glGetBufferParameteri(target, GL30.GL_BUFFER_MAP_LENGTH);
+                long[] mapLength = new long[1];
+                GL32.glGetBufferParameteri64v(target, GL30.GL_BUFFER_MAP_LENGTH, mapLength);
                 int count = dst.remaining();
-                long delta = requireInsideMappedRange(offset, mapOffset, mapLength, count);
+                long delta = requireInsideMappedRange(offset, mapOffset, mapLength[0], count);
                 ByteBuffer view = MemoryUtil.memByteBuffer(pointer + delta, count);
                 int position = dst.position();
                 dst.put(view);

@@ -1,6 +1,7 @@
 package com.vucelich.vistamacfix.mixin;
 
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -24,9 +25,11 @@ import net.minecraft.client.renderer.MultiBufferSource;
  * the missing {@code getVideoFrameBuilder} call. Priority stays above vistafix
  * so a later injector from that mod cannot land in front of the cancel.
  */
+@Pseudo
 @Mixin(targets = "net.mehvahdjukaar.vista.client.renderer.TvBlockEntityRenderer", remap = false, priority = 2000)
 public class TvContraptionMixin {
     private static final java.util.concurrent.atomic.AtomicBoolean LOGGED_MIXINS = new java.util.concurrent.atomic.AtomicBoolean();
+    private static final java.util.concurrent.atomic.AtomicBoolean LOGGED_FALLBACK = new java.util.concurrent.atomic.AtomicBoolean();
     static {
         org.slf4j.LoggerFactory.getLogger("vista_mac_fix")
                 .info("Vista Mac Fix: television contraption renderer is armed");
@@ -60,10 +63,16 @@ public class TvContraptionMixin {
             return;
         }
         boolean drew = ContraptionTvScreen.render(television, partialTick, pose, buffers, packedLight);
-        // Cancelling only after a failed draw would still run the broken call.
-        // When that overwrite is in the method, skip it for every lit screen.
-        if (drew || (takeover && television.isScreenOn(partialTick))) {
+        if (drew) {
             callback.cancel();
+            return;
+        }
+        // A failed takeover used to cancel the original renderer and leave a
+        // blank screen. Vista's own draw still runs, and the miss is logged once.
+        if (takeover && television.isScreenOn(partialTick) && LOGGED_FALLBACK.compareAndSet(false, true)) {
+            org.slf4j.LoggerFactory.getLogger("vista_mac_fix").warn(
+                    "Vista Mac Fix: television takeover did not draw; leaving Vista's renderer to draw this screen"
+            );
         }
     }
 
