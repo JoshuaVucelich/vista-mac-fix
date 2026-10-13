@@ -29,6 +29,7 @@ public final class BufferCopyFallback {
     private static final Logger LOGGER = LoggerFactory.getLogger("vista_mac_fix");
     private static final AtomicBoolean LOGGED_REDIRECT = new AtomicBoolean();
     private static final AtomicBoolean LOGGED_FAILURE = new AtomicBoolean();
+    private static final AtomicBoolean LOGGED_LATER_FAILURE = new AtomicBoolean();
     private static final AtomicLong REDIRECTED = new AtomicLong();
     private static final ThreadLocal<ByteBuffer> SCRATCH = ThreadLocal.withInitial(() -> ByteBuffer.allocateDirect(8192));
 
@@ -52,6 +53,8 @@ public final class BufferCopyFallback {
         } catch (Throwable error) {
             if (LOGGED_FAILURE.compareAndSet(false, true)) {
                 LOGGER.warn("Vista Mac Fix: CPU buffer copy failed; the Apple copy was skipped", error);
+            } else if (LOGGED_LATER_FAILURE.compareAndSet(false, true)) {
+                LOGGER.warn("Vista Mac Fix: later CPU buffer copies are also being skipped");
             }
         }
     }
@@ -105,6 +108,19 @@ public final class BufferCopyFallback {
                 gl.bindBuffer(writeTarget, savedWrite);
             }
         }
+    }
+
+    /**
+     * Rejects a mapped read that starts before the map or extends past
+     * {@code GL_BUFFER_MAP_LENGTH}. Returns the byte offset from the map start.
+     */
+    static long requireInsideMappedRange(long offset, int mapOffset, int mapLength, int count) {
+        long delta = offset - mapOffset;
+        long length = mapLength;
+        if (delta < 0 || length < 0 || delta > length || count < 0 || count > length - delta) {
+            throw new IllegalStateException("read is outside the mapped range");
+        }
+        return delta;
     }
 
     static int bindingQuery(int target) {
@@ -183,11 +199,9 @@ public final class BufferCopyFallback {
                     throw new IllegalStateException("mapped buffer has a null pointer");
                 }
                 int mapOffset = GL15.glGetBufferParameteri(target, GL30.GL_BUFFER_MAP_OFFSET);
-                long delta = offset - mapOffset;
-                if (delta < 0) {
-                    throw new IllegalStateException("read starts before the mapped range");
-                }
+                int mapLength = GL15.glGetBufferParameteri(target, GL30.GL_BUFFER_MAP_LENGTH);
                 int count = dst.remaining();
+                long delta = requireInsideMappedRange(offset, mapOffset, mapLength, count);
                 ByteBuffer view = MemoryUtil.memByteBuffer(pointer + delta, count);
                 int position = dst.position();
                 dst.put(view);

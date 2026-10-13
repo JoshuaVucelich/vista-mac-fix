@@ -91,6 +91,18 @@ class BufferCopyFallbackTest {
     }
 
     @Test
+    void mappedReadMustStayInsideTheMappedLength() {
+        assertEquals(2L, BufferCopyFallback.requireInsideMappedRange(6, 4, 10, 3));
+        assertEquals(10L, BufferCopyFallback.requireInsideMappedRange(10, 0, 10, 0));
+        assertThrows(IllegalStateException.class,
+                () -> BufferCopyFallback.requireInsideMappedRange(3, 4, 10, 1));
+        assertThrows(IllegalStateException.class,
+                () -> BufferCopyFallback.requireInsideMappedRange(8, 0, 10, 3));
+        assertThrows(IllegalStateException.class,
+                () -> BufferCopyFallback.requireInsideMappedRange(11, 0, 10, 0));
+    }
+
+    @Test
     void trapThrowsBeforeTheNativeCall() {
         System.setProperty(AppleGl.TRAP_PROPERTY, "true");
         IllegalStateException error = assertThrows(IllegalStateException.class,
