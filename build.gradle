@@ -1,0 +1,62 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.148'
+}
+
+version = mod_version
+group = mod_group_id
+base {
+    archivesName = mod_id
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+neoForge {
+    version = project.neo_version
+
+    runs {
+        client {
+            client()
+            // Simulate the Apple path on this Linux machine.
+            systemProperty 'vista_mac_fix.force', 'true'
+        }
+        configureEach {
+            logLevel = org.slf4j.event.Level.INFO
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'org.ow2.asm:asm:9.7'
+    testImplementation 'org.ow2.asm:asm-tree:9.7'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+}
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
+}
+
+tasks.named('jar', Jar) {
+    manifest {
+        attributes(
+                'Specification-Title': 'Vista Mac Fix',
+                'Specification-Vendor': 'Joshua Vucelich',
+                'Implementation-Title': 'vista_mac_fix',
+                'Implementation-Version': project.version,
+                'Implementation-Vendor': 'Joshua Vucelich',
+                'Built-On': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+        )
+    }
+}

@@ -1,0 +1,34 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="MIT"
+
+[[mods]]
+modId="vista_mac_fix"
+version="1.0.0"
+displayName="Vista Mac Fix"
+authors="Joshua Vucelich"
+description='''Stops a powered Vista television from crashing the Apple OpenGL client. On macOS the live viewfinder picture is skipped and the screen stays a static placeholder. Other systems are unchanged.'''
+
+[[mixins]]
+config="vistamacfix.mixins.json"
+
+[[dependencies.vista_mac_fix]]
+modId="neoforge"
+type="required"
+versionRange="[21.1,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.vista_mac_fix]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1,1.21.2)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.vista_mac_fix]]
+modId="vista"
+type="optional"
+versionRange="*"
+ordering="AFTER"
+side="CLIENT"

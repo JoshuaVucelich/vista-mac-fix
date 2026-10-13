@@ -1,0 +1,17 @@
+.gradle
+agent-tools/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+.idea/
+*.iml
+.run/
+run/
+run-mods/
+out/
+.eclipse/
+.project
+.classpath
+.settings
+.vscode/
+.DS_Store
+repo/
