@@ -100,6 +100,8 @@ class BufferCopyFallbackTest {
                 () -> BufferCopyFallback.requireInsideMappedRange(8, 0, 10, 3));
         assertThrows(IllegalStateException.class,
                 () -> BufferCopyFallback.requireInsideMappedRange(11, 0, 10, 0));
+        long mapOffset = (1L << 32) + 16L;
+        assertEquals(8L, BufferCopyFallback.requireInsideMappedRange(mapOffset + 8L, mapOffset, 64L, 4));
     }
 
     @Test

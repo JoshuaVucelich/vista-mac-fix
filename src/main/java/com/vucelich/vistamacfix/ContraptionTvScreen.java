@@ -54,7 +54,7 @@ public final class ContraptionTvScreen {
             MultiBufferSource buffers,
             int packedLight
     ) {
-        if (television == null || !television.isScreenOn(partialTick)) {
+        if (ContraptionTvPolicy.disabled() || television == null || !television.isScreenOn(partialTick)) {
             return false;
         }
         pose.pushPose();
@@ -96,7 +96,7 @@ public final class ContraptionTvScreen {
             }
             return true;
         } catch (Throwable error) {
-            LOGGER.warn("Vista Mac Fix: contraption television render failed", error);
+            ContraptionTvPolicy.onRenderFailure(error);
             return false;
         } finally {
             pose.popPose();

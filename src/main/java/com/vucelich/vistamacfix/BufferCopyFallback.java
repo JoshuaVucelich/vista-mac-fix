@@ -201,11 +201,12 @@ public final class BufferCopyFallback {
                 if (pointer == 0L) {
                     throw new IllegalStateException("mapped buffer has a null pointer");
                 }
-                int mapOffset = GL15.glGetBufferParameteri(target, GL30.GL_BUFFER_MAP_OFFSET);
+                long[] mapOffset = new long[1];
                 long[] mapLength = new long[1];
+                GL32.glGetBufferParameteri64v(target, GL30.GL_BUFFER_MAP_OFFSET, mapOffset);
                 GL32.glGetBufferParameteri64v(target, GL30.GL_BUFFER_MAP_LENGTH, mapLength);
                 int count = dst.remaining();
-                long delta = requireInsideMappedRange(offset, mapOffset, mapLength[0], count);
+                long delta = requireInsideMappedRange(offset, mapOffset[0], mapLength[0], count);
                 ByteBuffer view = MemoryUtil.memByteBuffer(pointer + delta, count);
                 int position = dst.position();
                 dst.put(view);

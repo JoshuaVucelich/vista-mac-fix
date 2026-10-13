@@ -8,6 +8,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.vucelich.vistamacfix.ContraptionTvPolicy;
 import com.vucelich.vistamacfix.ContraptionTvScreen;
 import com.vucelich.vistamacfix.SableContraptions;
 import com.vucelich.vistamacfix.VistaFixNeutralizer;
@@ -62,16 +63,20 @@ public class TvContraptionMixin {
         if (!ship && !takeover) {
             return;
         }
+        boolean screenOn = television.isScreenOn(partialTick);
         boolean drew = ContraptionTvScreen.render(television, partialTick, pose, buffers, packedLight);
-        if (drew) {
+        if (ContraptionTvPolicy.cancelOriginalRenderer(drew, takeover, screenOn)) {
+            if (!drew && LOGGED_FALLBACK.compareAndSet(false, true)) {
+                org.slf4j.LoggerFactory.getLogger("vista_mac_fix").warn(
+                        "Vista Mac Fix: television takeover did not draw; cancelling the original renderer so vistafix's missing call does not run"
+                );
+            }
             callback.cancel();
             return;
         }
-        // A failed takeover used to cancel the original renderer and leave a
-        // blank screen. Vista's own draw still runs, and the miss is logged once.
-        if (takeover && television.isScreenOn(partialTick) && LOGGED_FALLBACK.compareAndSet(false, true)) {
+        if (screenOn && LOGGED_FALLBACK.compareAndSet(false, true)) {
             org.slf4j.LoggerFactory.getLogger("vista_mac_fix").warn(
-                    "Vista Mac Fix: television takeover did not draw; leaving Vista's renderer to draw this screen"
+                    "Vista Mac Fix: contraption television did not draw; leaving Vista's renderer to draw this screen"
             );
         }
     }
