@@ -4,7 +4,7 @@ license="MIT"
 
 [[mods]]
 modId="vista_mac_fix"
-version="1.0.5"
+version="1.0.6"
 displayName="Vista Mac Fix"
 authors="Joshua Vucelich"
 description='''Client-only. On macOS, redirects Sodium and Sable glCopyBufferSubData calls through a CPU copy so Apple OpenGL does not abort. Draws Vista 4.4.11 televisions on Sable contraptions. If Vista Aeronautics Fix's broken television mixin is still applied, that renderer is cancelled instead of calling its missing method.'''

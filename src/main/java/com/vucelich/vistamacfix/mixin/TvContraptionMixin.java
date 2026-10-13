@@ -30,7 +30,8 @@ import net.minecraft.client.renderer.MultiBufferSource;
 @Mixin(targets = "net.mehvahdjukaar.vista.client.renderer.TvBlockEntityRenderer", remap = false, priority = 2000)
 public class TvContraptionMixin {
     private static final java.util.concurrent.atomic.AtomicBoolean LOGGED_MIXINS = new java.util.concurrent.atomic.AtomicBoolean();
-    private static final java.util.concurrent.atomic.AtomicBoolean LOGGED_FALLBACK = new java.util.concurrent.atomic.AtomicBoolean();
+    private static final java.util.concurrent.atomic.AtomicBoolean LOGGED_TAKEOVER = new java.util.concurrent.atomic.AtomicBoolean();
+    private static final java.util.concurrent.atomic.AtomicBoolean LOGGED_VISTA_FALLBACK = new java.util.concurrent.atomic.AtomicBoolean();
     static {
         org.slf4j.LoggerFactory.getLogger("vista_mac_fix")
                 .info("Vista Mac Fix: television contraption renderer is armed");
@@ -63,10 +64,10 @@ public class TvContraptionMixin {
         if (!ship && !takeover) {
             return;
         }
-        boolean screenOn = television.isScreenOn(partialTick);
+        boolean screenOn = screenOn(television, partialTick);
         boolean drew = ContraptionTvScreen.render(television, partialTick, pose, buffers, packedLight);
-        if (ContraptionTvPolicy.cancelOriginalRenderer(drew, takeover, screenOn)) {
-            if (!drew && LOGGED_FALLBACK.compareAndSet(false, true)) {
+        if (ContraptionTvPolicy.cancelOriginalRenderer(drew, takeover)) {
+            if (!drew && screenOn && LOGGED_TAKEOVER.compareAndSet(false, true)) {
                 org.slf4j.LoggerFactory.getLogger("vista_mac_fix").warn(
                         "Vista Mac Fix: television takeover did not draw; cancelling the original renderer so vistafix's missing call does not run"
                 );
@@ -74,10 +75,19 @@ public class TvContraptionMixin {
             callback.cancel();
             return;
         }
-        if (screenOn && LOGGED_FALLBACK.compareAndSet(false, true)) {
+        if (screenOn && LOGGED_VISTA_FALLBACK.compareAndSet(false, true)) {
             org.slf4j.LoggerFactory.getLogger("vista_mac_fix").warn(
                     "Vista Mac Fix: contraption television did not draw; leaving Vista's renderer to draw this screen"
             );
+        }
+    }
+
+    private static boolean screenOn(TVBlockEntity television, float partialTick) {
+        try {
+            return television.isScreenOn(partialTick);
+        } catch (Throwable error) {
+            ContraptionTvPolicy.onRenderFailure(error);
+            return false;
         }
     }
 

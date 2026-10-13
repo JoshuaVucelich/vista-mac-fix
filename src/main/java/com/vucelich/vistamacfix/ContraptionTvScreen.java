@@ -54,7 +54,7 @@ public final class ContraptionTvScreen {
             MultiBufferSource buffers,
             int packedLight
     ) {
-        if (ContraptionTvPolicy.disabled() || television == null || !television.isScreenOn(partialTick)) {
+        if (ContraptionTvPolicy.disabled() || television == null || !screenOn(television, partialTick)) {
             return false;
         }
         pose.pushPose();
@@ -100,6 +100,15 @@ public final class ContraptionTvScreen {
             return false;
         } finally {
             pose.popPose();
+        }
+    }
+
+    private static boolean screenOn(TVBlockEntity television, float partialTick) {
+        try {
+            return television.isScreenOn(partialTick);
+        } catch (Throwable error) {
+            ContraptionTvPolicy.onRenderFailure(error);
+            return false;
         }
     }
 

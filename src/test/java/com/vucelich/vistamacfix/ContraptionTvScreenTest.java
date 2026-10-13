@@ -14,17 +14,15 @@ class ContraptionTvScreenTest {
     }
 
     @Test
-    void takeoverFailureOnALitScreenCancelsTheOriginalRenderer() {
-        assertTrue(ContraptionTvPolicy.cancelOriginalRenderer(false, true, true));
-        assertTrue(ContraptionTvPolicy.cancelOriginalRenderer(true, true, true));
-        assertTrue(ContraptionTvPolicy.cancelOriginalRenderer(true, false, true));
+    void takeoverCancelsTheOriginalRendererEvenWhenTheScreenIsOff() {
+        assertTrue(ContraptionTvPolicy.cancelOriginalRenderer(false, true));
+        assertTrue(ContraptionTvPolicy.cancelOriginalRenderer(true, true));
+        assertTrue(ContraptionTvPolicy.cancelOriginalRenderer(true, false));
     }
 
     @Test
     void failedDrawFallsThroughOnlyWhenTakeoverIsOff() {
-        assertFalse(ContraptionTvPolicy.cancelOriginalRenderer(false, false, true));
-        assertFalse(ContraptionTvPolicy.cancelOriginalRenderer(false, true, false));
-        assertFalse(ContraptionTvPolicy.cancelOriginalRenderer(false, false, false));
+        assertFalse(ContraptionTvPolicy.cancelOriginalRenderer(false, false));
     }
 
     @Test
@@ -39,8 +37,17 @@ class ContraptionTvScreenTest {
     }
 
     @Test
-    void otherRenderFailuresStayEnabled() {
-        assertFalse(ContraptionTvPolicy.onRenderFailure(new IllegalStateException("draw")));
+    void otherRenderFailuresStayEnabledAndRateLimitStacks() {
+        long start = 1_000L;
+        assertFalse(ContraptionTvPolicy.onRenderFailure(new IllegalStateException("draw"), start));
+        assertEquals(1, ContraptionTvPolicy.nonLinkageStacks());
+        assertFalse(ContraptionTvPolicy.onRenderFailure(new IllegalStateException("draw"), start + 1L));
+        assertEquals(1, ContraptionTvPolicy.nonLinkageStacks());
+        assertFalse(ContraptionTvPolicy.onRenderFailure(
+                new IllegalStateException("draw"),
+                start + ContraptionTvPolicy.NON_LINKAGE_STACK_INTERVAL_NANOS
+        ));
+        assertEquals(2, ContraptionTvPolicy.nonLinkageStacks());
         assertFalse(ContraptionTvPolicy.disabled());
         assertEquals(0, ContraptionTvPolicy.linkageLogs());
     }
