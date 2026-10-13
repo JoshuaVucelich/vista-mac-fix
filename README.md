@@ -2,11 +2,17 @@
 
 Client-only NeoForge 1.21.1 mod (`vista_mac_fix`) for a crash on Apple OpenGL.
 
-Joshua's Mac (Apple M4, macOS 27, OpenGL 4.1) dies while joining a world that already has a powered Vista television. The Apple driver logs `gldCopyBufferSubData: NEEDS IMPLEMENTATION` and then aborts. That call is reached from Vista's live viewfinder render (Sodium chunk upload and Sable's airship buffer resize). Vista `1.21.1-4.4.11` is the build in the crash log. Vista `1.21.1-5.5.7` still does not replace the copy; its changelog has no Apple `glCopyBufferSubData` fix.
+Joshua's Mac (Apple M4, macOS 27, OpenGL 4.1) aborts in the driver with `gldCopyBufferSubData: NEEDS IMPLEMENTATION`. Vista `1.21.1-4.4.11` is the build in the crash. Vista `1.21.1-5.5.7` does not replace the copy. The call is not limited to Vista's viewfinder: Sodium's staging upload and Sable's airship buffer resize hit the same unimplemented entry point, including during resource reload before the world joins.
 
-On macOS this mod cancels `VistaLevelRenderer.render` before the world picture is drawn and clears the feed targets to a flat placeholder. Windows and Linux keep the normal picture. If Vista is missing, or its render method does not match 4.4.11 / 5.5.x, the mixin is not applied.
+On a Mac (`os.name` contains `Mac`), this mod rewrites every `glCopyBufferSubData` / `nglCopyBufferSubData` call on LWJGL `GL31C`, `GL31`, and `ARBCopyBuffer` into a CPU copy: `glGetBufferSubData` into a temporary buffer, then `glBufferSubData`, with the read and write bindings saved and restored. A buffer that is already mapped is read from its map pointer, because `glGetBufferSubData` is illegal on a mapped buffer. Windows and Linux keep the native call.
 
-Force the Mac path on another OS with `-Dvista_mac_fix.force=true`. Force it off with `-Dvista_mac_fix.force=false`.
+`-Dvista_mac_fix.force=true` (or `VISTA_MAC_FIX_FORCE=true`) turns the Mac path on elsewhere. `-Dvista_mac_fix.force=false` turns it off, including on a Mac.
+
+The jar in `mods` is a small launch service. It adds the nested mod and attaches `vista-mac-fix-agent.jar`, which rewrites caller classes as they load. LWJGL is already initialized by then, so the native method itself is not patched.
+
+`-Dvista_mac_fix.trap=true` makes the fallback throw if it would call the real GL function, and the agent replaces the LWJGL methods with that same throw. A missed call site fails the run instead of reaching the driver.
+
+Sable 2.0.3 looks for `ViewFinderAccess$Block`, which Vista 4.4.11 and 5.5.7 do not ship. The jar includes that class so Sable's required mixin can apply. Nothing in the game calls it.
 
 ## Build
 
@@ -14,18 +20,15 @@ Force the Mac path on another OS with `-Dvista_mac_fix.force=true`. Force it off
 ./gradlew test build
 ```
 
-The jar is `build/libs/vista_mac_fix-1.0.0.jar`. Put it in the client `mods` folder next to Vista. Do not put it on a dedicated server; the mod loads on the client only.
+The jar is `build/libs/vista_mac_fix-1.0.1.jar`. Put it in the client `mods` folder. The mod loads on the client only.
 
 ## In game
 
 1. Start the client and open `latest.log`.
-2. Look for `Vista Mac Fix 1.0.0 loaded. Live viewfinder skip active=true` on a Mac.
-3. Join the world that has the powered television. The game should stay open. The TV shows a flat dark screen instead of the camera picture.
-4. On Windows or Linux the same log line says `active=false`, and the television still shows the live picture.
-
-## Download
-
-Not on Modrinth yet. Build with `./gradlew build`.
+2. On a Mac, look for `Vista Mac Fix agent installed`, `Vista Mac Fix 1.0.1 loaded. Apple buffer-copy fallback active=true`, and `redirected` lines for Sodium or Sable.
+3. The first redirected copy logs `glCopyBufferSubData is using a CPU readback on this client`.
+4. Join the world that has the powered television. The client should stay open, and the television can show its picture.
+5. On Windows or Linux the same load line says `active=false`, and the native copy is left in place.
 
 ## License
 

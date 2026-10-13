@@ -17,8 +17,9 @@ neoForge {
     runs {
         client {
             client()
-            // Simulate the Apple path on this Linux machine.
+            // Simulate the Apple path, and abort if the real GL copy is reached.
             systemProperty 'vista_mac_fix.force', 'true'
+            systemProperty 'vista_mac_fix.trap', 'true'
         }
         configureEach {
             logLevel = org.slf4j.event.Level.INFO
@@ -32,11 +33,60 @@ neoForge {
     }
 }
 
+def generatedViewFinder = layout.buildDirectory.dir('generated/viewfinder')
+
+sourceSets {
+    trap {
+        java.srcDir 'src/trap/java'
+    }
+}
+
+// A separate jar so the dev client does not load the mod classes twice.
+def trapAgentJar = tasks.register('trapAgentJar', Jar) {
+    archiveFileName = 'vista-mac-fix-agent.jar'
+    from sourceSets.trap.output
+    manifest {
+        attributes(
+                'Premain-Class': 'com.vucelich.vistamacfix.agent.GlCopyTrapAgent',
+                'Agent-Class': 'com.vucelich.vistamacfix.agent.GlCopyTrapAgent',
+                'Can-Redefine-Classes': 'true',
+                'Can-Retransform-Classes': 'true'
+        )
+    }
+}
+
+def innerModJar = tasks.register('innerModJar', Jar) {
+    archiveFileName = 'vista_mac_fix-mod.jar'
+    destinationDirectory = layout.buildDirectory.dir('nested')
+    from sourceSets.main.output
+    exclude 'com/vucelich/vistamacfix/launch/**'
+    exclude 'META-INF/services/**'
+    manifest {
+        attributes(
+                'Automatic-Module-Name': 'vista_mac_fix',
+                'Implementation-Title': 'vista_mac_fix',
+                'Implementation-Version': project.version,
+                'Implementation-Vendor': 'Joshua Vucelich'
+        )
+    }
+    dependsOn tasks.named('classes')
+}
+
+neoForge.runs.getByName('client').tap {
+    jvmArguments.add(trapAgentJar.flatMap { it.archiveFile }.map { file -> "-javaagent:${file.asFile.absolutePath}" })
+    taskBefore(trapAgentJar)
+}
+
 dependencies {
+    compileOnly 'org.ow2.asm:asm:9.7'
+    compileOnly 'org.ow2.asm:asm-tree:9.7'
+    testImplementation 'org.slf4j:slf4j-api:2.0.9'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testImplementation 'org.ow2.asm:asm:9.7'
     testImplementation 'org.ow2.asm:asm-tree:9.7'
+    trapCompileOnly 'org.ow2.asm:asm:9.7'
+    trapCompileOnly 'org.ow2.asm:asm-tree:9.7'
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -44,11 +94,40 @@ tasks.withType(JavaCompile).configureEach {
     options.release = 21
 }
 
+tasks.named('compileTrapJava', JavaCompile).configure {
+    options.compilerArgs.addAll(['--add-modules', 'jdk.attach'])
+}
+
+tasks.register('generateViewFinderStub', JavaExec) {
+    dependsOn tasks.named('compileJava')
+    classpath = files(sourceSets.main.output.classesDirs, configurations.compileClasspath)
+    mainClass = 'com.vucelich.vistamacfix.ViewFinderStub'
+    args generatedViewFinder.get().asFile.absolutePath
+    outputs.dir(generatedViewFinder)
+}
+
+tasks.named('processResources', ProcessResources) {
+    dependsOn 'generateViewFinderStub'
+    from(generatedViewFinder)
+}
+
 tasks.named('test', Test) {
     useJUnitPlatform()
 }
 
 tasks.named('jar', Jar) {
+    dependsOn innerModJar, trapAgentJar
+    exclude 'com/vucelich/vistamacfix/*.class'
+    exclude 'net/**'
+    exclude 'META-INF/neoforge.mods.toml'
+    into('META-INF/jarjar') {
+        from innerModJar
+        rename { 'vista_mac_fix-mod.jar' }
+    }
+    into('META-INF') {
+        from trapAgentJar
+        rename { 'vista-mac-fix-agent.jar' }
+    }
     manifest {
         attributes(
                 'Specification-Title': 'Vista Mac Fix',

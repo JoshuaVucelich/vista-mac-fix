@@ -4,13 +4,10 @@ license="MIT"
 
 [[mods]]
 modId="vista_mac_fix"
-version="1.0.0"
+version="1.0.1"
 displayName="Vista Mac Fix"
 authors="Joshua Vucelich"
-description='''Stops a powered Vista television from crashing the Apple OpenGL client. On macOS the live viewfinder picture is skipped and the screen stays a static placeholder. Other systems are unchanged.'''
-
-[[mixins]]
-config="vistamacfix.mixins.json"
+description='''On macOS, replaces every glCopyBufferSubData with a CPU readback so Apple OpenGL does not abort. Other systems keep the original GL call.'''
 
 [[dependencies.vista_mac_fix]]
 modId="neoforge"
