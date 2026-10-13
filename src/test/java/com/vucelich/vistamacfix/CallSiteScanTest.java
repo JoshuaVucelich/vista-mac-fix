@@ -23,8 +23,8 @@ import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 
 /**
- * Walks the pack jars and fails if any glCopyBufferSubData call would survive
- * {@link CopyBufferRewriter}.
+ * The pack jars may call glCopyBufferSubData from exactly two methods:
+ * Sodium's command list and Sable's bucket resize. Those are the mixin targets.
  */
 class CallSiteScanTest {
     private static final Path MODS = Path.of("/tmp/scanmods");
@@ -86,18 +86,14 @@ class CallSiteScanTest {
         new ClassReader(bytes).accept(node, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
         List<String> found = new ArrayList<>();
         collect(node, found);
-        int rewritten = CopyBufferRewriter.rewrite(node);
-        List<String> left = new ArrayList<>();
-        collect(node, left);
+        boolean covered = node.name.endsWith("GLRenderDevice$ImmediateCommandList")
+                || node.name.endsWith("BucketRenderBuffer");
         for (String site : found) {
-            String line = "COVERED " + label + " " + node.name + " " + site;
+            String line = (covered ? "COVERED " : "UNCOVERED ") + label + " " + node.name + " " + site;
             sites.add(line);
-        }
-        if (left.size() != found.size() - rewritten) {
-            uncovered.add(label + " " + node.name + " rewrite count " + rewritten + " left " + left);
-        }
-        for (String site : left) {
-            uncovered.add(label + " " + node.name + " " + site);
+            if (!covered) {
+                uncovered.add(line);
+            }
         }
     }
 
@@ -111,7 +107,7 @@ class CallSiteScanTest {
             }
             for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
                 if (insn instanceof MethodInsnNode call
-                        && (CopyBufferRewriter.NAMES.contains(call.name) || call.name.contains("CopyBufferSubData"))) {
+                        && call.name.contains("CopyBufferSubData")) {
                     into.add(method.name + method.desc + " -> " + call.owner + "." + call.name + call.desc);
                 }
             }

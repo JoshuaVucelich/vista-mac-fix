@@ -4,10 +4,13 @@ license="MIT"
 
 [[mods]]
 modId="vista_mac_fix"
-version="1.0.1"
+version="1.0.2"
 displayName="Vista Mac Fix"
 authors="Joshua Vucelich"
-description='''On macOS, replaces every glCopyBufferSubData with a CPU readback so Apple OpenGL does not abort. Other systems keep the original GL call.'''
+description='''Client-only. On macOS, redirects Sodium and Sable glCopyBufferSubData calls through a CPU copy so Apple OpenGL does not abort. Other systems keep the original GL call.'''
+
+[[mixins]]
+config="vistamacfix.mixins.json"
 
 [[dependencies.vista_mac_fix]]
 modId="neoforge"
@@ -22,6 +25,20 @@ type="required"
 versionRange="[1.21.1,1.21.2)"
 ordering="NONE"
 side="BOTH"
+
+[[dependencies.vista_mac_fix]]
+modId="sodium"
+type="optional"
+versionRange="*"
+ordering="AFTER"
+side="CLIENT"
+
+[[dependencies.vista_mac_fix]]
+modId="sable"
+type="optional"
+versionRange="*"
+ordering="AFTER"
+side="CLIENT"
 
 [[dependencies.vista_mac_fix]]
 modId="vista"
