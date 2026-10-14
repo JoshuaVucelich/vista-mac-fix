@@ -17,7 +17,7 @@ neoForge {
     runs {
         client {
             client()
-            // Simulate the Apple path on this Linux machine.
+            // This VM is not a Mac. The property turns the same CPU path on.
             systemProperty 'vista_mac_fix.force', 'true'
         }
         configureEach {
@@ -33,6 +33,7 @@ neoForge {
 }
 
 dependencies {
+    testImplementation 'org.slf4j:slf4j-api:2.0.9'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testImplementation 'org.ow2.asm:asm:9.7'

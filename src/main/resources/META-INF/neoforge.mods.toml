@@ -4,10 +4,10 @@ license="MIT"
 
 [[mods]]
 modId="vista_mac_fix"
-version="1.0.0"
+version="1.0.2"
 displayName="Vista Mac Fix"
 authors="Joshua Vucelich"
-description='''Stops a powered Vista television from crashing the Apple OpenGL client. On macOS the live viewfinder picture is skipped and the screen stays a static placeholder. Other systems are unchanged.'''
+description='''Client-only. On macOS, redirects Sodium and Sable glCopyBufferSubData calls through a CPU copy so Apple OpenGL does not abort. Other systems keep the original GL call.'''
 
 [[mixins]]
 config="vistamacfix.mixins.json"
@@ -27,8 +27,15 @@ ordering="NONE"
 side="BOTH"
 
 [[dependencies.vista_mac_fix]]
-modId="vista"
+modId="sodium"
 type="optional"
-versionRange="*"
+versionRange="[0.8.13,)"
+ordering="AFTER"
+side="CLIENT"
+
+[[dependencies.vista_mac_fix]]
+modId="sable"
+type="optional"
+versionRange="[2.0.3,)"
 ordering="AFTER"
 side="CLIENT"
