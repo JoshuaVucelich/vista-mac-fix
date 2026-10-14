@@ -32,7 +32,27 @@ neoForge {
     }
 }
 
+repositories {
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = "Modrinth"
+                url = "https://api.modrinth.com/maven"
+            }
+        }
+        filter {
+            includeGroup "maven.modrinth"
+        }
+    }
+}
+
 dependencies {
+    // Mojmap jars used only to compile the television mixin against Vista
+    // 4.4.11. They are not shipped inside this mod. Version ids select the
+    // NeoForge files; the shared version numbers also publish Fabric jars.
+    compileOnly "maven.modrinth:vista_tv:XDmEbLHW"
+    compileOnly "maven.modrinth:moonlight:fAIfWX6M"
+    testImplementation "maven.modrinth:vista-aeronautics-fix:q4MJ1X5o"
     testImplementation 'org.slf4j:slf4j-api:2.0.9'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

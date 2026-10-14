@@ -3,9 +3,11 @@
   "minVersion": "0.8",
   "package": "com.vucelich.vistamacfix.mixin",
   "compatibilityLevel": "JAVA_21",
+  "plugin": "com.vucelich.vistamacfix.VistaMacFixMixinPlugin",
   "client": [
     "SodiumCopyBufferMixin",
-    "SableCopyBufferMixin"
+    "SableCopyBufferMixin",
+    "TvContraptionMixin"
   ],
   "injectors": {
     "defaultRequire": 0
