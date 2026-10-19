@@ -28,14 +28,6 @@ neoForge {
                 systemProperty 'vista_mac_fix.dhProbeExit', 'true'
                 systemProperty 'vista_mac_fix.dhProbeFile', file('run/dh-probe.txt').absolutePath
             }
-            additionalRuntimeClasspathConfiguration.dependencies.add(
-                    project.dependencies.create(sourceSets.probe.output)
-            )
-            // The probe classes are a separate source set. The run must compile
-            // them, and the release jar must not.
-            tasks.named('runClient').configure {
-                dependsOn tasks.named('compileProbeJava')
-            }
         }
         configureEach {
             logLevel = org.slf4j.event.Level.INFO
@@ -45,6 +37,9 @@ neoForge {
     mods {
         "${mod_id}" {
             sourceSet(sourceSets.main)
+            // Dev runs only. The jar task still packages the main source set,
+            // so DhFeedProbe stays out of the release jar.
+            sourceSet(sourceSets.probe)
         }
     }
 }
