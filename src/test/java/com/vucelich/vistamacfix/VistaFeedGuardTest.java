@@ -16,32 +16,32 @@ class VistaFeedGuardTest {
     @BeforeEach
     @AfterEach
     void resetDepth() {
-        VistaFeedGuard.depth = 0;
+        VistaFeedGuard.reset();
     }
 
     @Test
     void wrapRunsOnceAndReturnsDepthToZero() {
         AtomicInteger runs = new AtomicInteger();
         Runnable wrapped = VistaFeedGuard.wrap(() -> {
-            assertEquals(1, VistaFeedGuard.depth);
+            assertEquals(1, VistaFeedGuard.depth());
             assertTrue(VistaFeedGuard.hidesLods());
             runs.incrementAndGet();
         });
         wrapped.run();
         assertEquals(1, runs.get());
-        assertEquals(0, VistaFeedGuard.depth);
+        assertEquals(0, VistaFeedGuard.depth());
         assertFalse(VistaFeedGuard.hidesLods());
     }
 
     @Test
     void exceptionInsideTaskStillDecrementsDepth() {
         Runnable wrapped = VistaFeedGuard.wrap(() -> {
-            assertEquals(1, VistaFeedGuard.depth);
+            assertEquals(1, VistaFeedGuard.depth());
             throw new IllegalStateException("feed failed");
         });
         IllegalStateException error = assertThrows(IllegalStateException.class, wrapped::run);
         assertEquals("feed failed", error.getMessage());
-        assertEquals(0, VistaFeedGuard.depth);
+        assertEquals(0, VistaFeedGuard.depth());
         assertFalse(VistaFeedGuard.hidesLods());
     }
 
@@ -49,11 +49,29 @@ class VistaFeedGuardTest {
     void nestedFeedsUnstack() {
         assertThrows(IllegalStateException.class, () -> VistaFeedGuard.wrap(() -> {
             VistaFeedGuard.wrap(() -> {
-                assertEquals(2, VistaFeedGuard.depth);
+                assertEquals(2, VistaFeedGuard.depth());
                 throw new IllegalStateException("inner");
             }).run();
         }).run());
-        assertEquals(0, VistaFeedGuard.depth);
+        assertEquals(0, VistaFeedGuard.depth());
+    }
+
+    @Test
+    void depthStaysOnTheThreadThatEntered() throws Exception {
+        java.util.concurrent.atomic.AtomicInteger other = new java.util.concurrent.atomic.AtomicInteger(-1);
+        VistaFeedGuard.wrap(() -> {
+            Thread thread = new Thread(() -> other.set(VistaFeedGuard.depth()));
+            thread.start();
+            try {
+                thread.join();
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(interrupted);
+            }
+            assertEquals(1, VistaFeedGuard.depth());
+        }).run();
+        assertEquals(0, other.get());
+        assertEquals(0, VistaFeedGuard.depth());
     }
 
     @Test
@@ -65,6 +83,6 @@ class VistaFeedGuardTest {
         Runnable wrapped = VistaFeedGuard.replacing(runs::incrementAndGet, true);
         wrapped.run();
         assertEquals(1, runs.get());
-        assertEquals(0, VistaFeedGuard.depth);
+        assertEquals(0, VistaFeedGuard.depth());
     }
 }

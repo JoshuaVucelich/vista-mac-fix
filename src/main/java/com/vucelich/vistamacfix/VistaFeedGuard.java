@@ -1,22 +1,28 @@
 package com.vucelich.vistamacfix;
 
 /**
- * Counts nested Vista television feed renders so Distant Horizons can skip
- * LOD drawing for that pass. The feed mixin is the only writer.
+ * Counts nested Vista television feed renders on the thread that entered
+ * them, so Distant Horizons can skip LOD drawing for that pass. The feed
+ * mixin is the only writer.
  */
 public final class VistaFeedGuard {
-    public static int depth;
+    private static final ThreadLocal<int[]> DEPTH = ThreadLocal.withInitial(() -> new int[1]);
 
     private VistaFeedGuard() {
     }
 
+    public static int depth() {
+        return DEPTH.get()[0];
+    }
+
     public static boolean hidesLods() {
-        return depth > 0;
+        return depth() > 0;
     }
 
     /**
-     * @return a single run of {@code task} while {@link #depth} is positive,
-     *         or null when the guard is off so Vista's original wrapper stays
+     * @return a single run of {@code task} while {@link #depth()} is positive
+     *         on this thread, or null when the guard is off so Vista's
+     *         original wrapper stays
      */
     public static Runnable replacing(Runnable task, boolean enabled) {
         if (!enabled || task == null) {
@@ -27,12 +33,17 @@ public final class VistaFeedGuard {
 
     public static Runnable wrap(Runnable task) {
         return () -> {
-            depth++;
+            int[] depth = DEPTH.get();
+            depth[0]++;
             try {
                 task.run();
             } finally {
-                depth--;
+                depth[0]--;
             }
         };
+    }
+
+    static void reset() {
+        DEPTH.remove();
     }
 }

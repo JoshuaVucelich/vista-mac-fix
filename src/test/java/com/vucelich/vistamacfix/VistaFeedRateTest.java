@@ -13,9 +13,12 @@ class VistaFeedRateTest {
     }
 
     @Test
-    void capUsesTheSameTickUnitAsVistaBaseFps() {
+    void capUsesVistaFpsBoundsAndPerTickUnits() {
         assertEquals(5.0 / 20.0, VistaFeedRate.capPerTick(10.0 / 20.0, 5.0));
         assertEquals(3.0 / 20.0, VistaFeedRate.capPerTick(0.5, 3.0));
         assertEquals(0.2, VistaFeedRate.capPerTick(0.2, 10.0));
+        assertEquals(1.0 / 20.0, VistaFeedRate.capPerTick(0.5, 0.2));
+        assertEquals(0.5, VistaFeedRate.capPerTick(0.5, 100.0));
+        assertEquals(1.0, VistaFeedRate.capPerTick(1.0, 60.0));
     }
 }

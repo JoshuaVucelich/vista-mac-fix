@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -20,9 +19,6 @@ import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.spongepowered.asm.service.MixinService;
-
-import net.neoforged.fml.loading.FMLLoader;
 
 /**
  * Vista Aeronautics Fix 1.0.0 overwrites the television renderer with a
@@ -42,6 +38,12 @@ public final class VistaFixNeutralizer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("vista_mac_fix");
     private static final AtomicBoolean LOGGED = new AtomicBoolean();
+    /**
+     * Classloader of the mixin host that is already running. A second copy of
+     * Mixin on the app loader has no host service and logs an error if it is
+     * initialized.
+     */
+    private static volatile ClassLoader rememberedMixinLoader;
 
     private static volatile boolean settled;
     private static volatile boolean replaceEveryTelevision;
@@ -219,12 +221,9 @@ public final class VistaFixNeutralizer {
     }
 
     private static byte[] readMixinBytes() {
-        try (InputStream in = MixinService.getService().getResourceAsStream(MIXIN_CLASS)) {
-            if (in != null) {
-                return in.readAllBytes();
-            }
-        } catch (Throwable ignored) {
-            // The service may not see the jar yet. The classloader is the next try.
+        byte[] fromService = readFromLiveMixinService();
+        if (fromService != null) {
+            return fromService;
         }
         ClassLoader loader = VistaFixNeutralizer.class.getClassLoader();
         if (loader == null) {
@@ -266,35 +265,52 @@ public final class VistaFixNeutralizer {
     private static List<Object> liveConfigHandles(List<String> names) {
         List<Object> handles = new ArrayList<>();
         Set<Object> seen = java.util.Collections.newSetFromMap(new IdentityHashMap<>());
-        for (ClassLoader loader : loaders()) {
-            collectConfigs(loader, handles, seen, names);
+        ClassLoader live = liveMixinLoader();
+        if (live == null) {
+            return handles;
         }
+        collectConfigs(live, handles, seen, names);
         return handles;
     }
 
-    private static List<ClassLoader> loaders() {
-        LinkedHashSet<ClassLoader> loaders = new LinkedHashSet<>();
+    /**
+     * The mixin plugin runs on the host that is already transforming classes.
+     * Only that loader is safe to ask for {@code Mixins} and {@code Config}.
+     */
+    private static ClassLoader liveMixinLoader() {
+        ClassLoader fromStack = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
+                .walk(frames -> frames
+                        .map(StackWalker.StackFrame::getDeclaringClass)
+                        .filter(type -> type.getName().startsWith("org.spongepowered.asm.mixin."))
+                        .map(Class::getClassLoader)
+                        .filter(loader -> loader != null)
+                        .findFirst()
+                        .orElse(null));
+        if (fromStack != null) {
+            rememberedMixinLoader = fromStack;
+            return fromStack;
+        }
+        return rememberedMixinLoader;
+    }
+
+    private static byte[] readFromLiveMixinService() {
+        ClassLoader live = liveMixinLoader();
+        if (live == null) {
+            return null;
+        }
         try {
-            ClassLoader launch = FMLLoader.class.getClassLoader();
-            if (launch != null) {
-                loaders.add(launch);
+            Class<?> serviceType = Class.forName("org.spongepowered.asm.service.MixinService", false, live);
+            Object service = serviceType.getMethod("getService").invoke(null);
+            Object stream = service.getClass().getMethod("getResourceAsStream", String.class).invoke(service, MIXIN_CLASS);
+            if (!(stream instanceof InputStream in)) {
+                return null;
+            }
+            try (in) {
+                return in.readAllBytes();
             }
         } catch (Throwable ignored) {
-            // The plugin can run before FML is initialized. Other loaders still apply.
+            return null;
         }
-        ClassLoader context = Thread.currentThread().getContextClassLoader();
-        if (context != null) {
-            loaders.add(context);
-        }
-        ClassLoader own = VistaFixNeutralizer.class.getClassLoader();
-        if (own != null) {
-            loaders.add(own);
-        }
-        ClassLoader system = ClassLoader.getSystemClassLoader();
-        if (system != null) {
-            loaders.add(system);
-        }
-        return new ArrayList<>(loaders);
     }
 
     private static void collectConfigs(ClassLoader loader, List<Object> handles, Set<Object> seen, List<String> names) {

@@ -36,12 +36,12 @@ class DistantHorizonsTimerTest {
             cancel(delayed);
 
             List<String> beforeGuard = List.copyOf(timerNames());
-            Runnable wrapped = VistaFeedGuard.wrap(() -> assertEquals(1, VistaFeedGuard.depth));
+            Runnable wrapped = VistaFeedGuard.wrap(() -> assertEquals(1, VistaFeedGuard.depth()));
             wrapped.run();
             for (String name : timerNames()) {
                 assertTrue(beforeGuard.contains(name), "feed guard started " + name);
             }
-            assertEquals(0, VistaFeedGuard.depth);
+            assertEquals(0, VistaFeedGuard.depth());
         }
     }
 

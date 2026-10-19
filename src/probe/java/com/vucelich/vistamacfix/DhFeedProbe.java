@@ -6,17 +6,16 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.seibel.distanthorizons.api.DhApi;
+import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiBeforeDeferredRenderEvent;
+import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiBeforeRenderEvent;
+
 /**
- * Started only when {@code -Dvista_mac_fix.dhProbe=true}. Calls Vista's feed
- * wrapper a few times and records whether that created a Distant Horizons
- * delayed-config timer.
+ * Dev-run only. Not packaged in the release jar. Calls Vista's feed wrapper
+ * and fires the DH render events the guard binds.
  */
 public final class DhFeedProbe {
     private DhFeedProbe() {
-    }
-
-    public static boolean enabled() {
-        return Boolean.getBoolean("vista_mac_fix.dhProbe");
     }
 
     public static void run() {
@@ -42,24 +41,37 @@ public final class DhFeedProbe {
         }
         int after = delayedTimers();
         List<String> names = delayedTimerNames();
+        String events = fireEvents();
         boolean guardWrapper = wrapper.contains("VistaFeedGuard");
-        boolean pass = error == null && runs == 5 && guardWrapper && after == before && VistaFeedGuard.depth == 0;
+        boolean eventsOk = events.contains("beforeOutside=false")
+                && events.contains("deferredOutside=false")
+                && events.contains("beforeInside=true")
+                && events.contains("deferredInside=true");
+        boolean pass = error == null
+                && runs == 5
+                && guardWrapper
+                && after == before
+                && VistaFeedGuard.depth() == 0
+                && eventsOk;
         String report = "pass=" + pass
                 + " runs=" + runs
                 + " wrapper=" + wrapper
                 + " timersBefore=" + before
                 + " timersAfter=" + after
                 + " timerNames=" + names
-                + " depth=" + VistaFeedGuard.depth
+                + " depth=" + VistaFeedGuard.depth()
+                + " " + events
+                + " sodium=" + DistantHorizonsGate.loaderHas("sodium")
                 + " error=" + (error == null ? "none" : error.toString());
         VistaMacFixMod.LOGGER.info("Vista Mac Fix DH probe: {}", report);
-        String path = System.getProperty("vista_mac_fix.dhProbeFile", "run/dh-probe.txt");
+        String path = System.getProperty("vista_mac_fix.dhProbeFile", "dh-probe.txt");
         try {
-            Path file = Path.of(path);
+            Path file = Path.of(path).toAbsolutePath();
             if (file.getParent() != null) {
                 Files.createDirectories(file.getParent());
             }
             Files.writeString(file, report + System.lineSeparator());
+            VistaMacFixMod.LOGGER.info("Vista Mac Fix DH probe file: {}", file);
         } catch (Throwable thrown) {
             VistaMacFixMod.LOGGER.warn("Vista Mac Fix DH probe: could not write {}", path, thrown);
         }
@@ -68,7 +80,30 @@ public final class DhFeedProbe {
         }
     }
 
-    static int delayedTimers() {
+    private static String fireEvents() {
+        try {
+            boolean beforeOutside = fire(DhApiBeforeRenderEvent.class);
+            boolean deferredOutside = fire(DhApiBeforeDeferredRenderEvent.class);
+            boolean[] inside = new boolean[2];
+            VistaFeedGuard.wrap(() -> {
+                inside[0] = fire(DhApiBeforeRenderEvent.class);
+                inside[1] = fire(DhApiBeforeDeferredRenderEvent.class);
+            }).run();
+            return "beforeOutside=" + beforeOutside
+                    + " deferredOutside=" + deferredOutside
+                    + " beforeInside=" + inside[0]
+                    + " deferredInside=" + inside[1];
+        } catch (Throwable thrown) {
+            return "events=error:" + thrown;
+        }
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static boolean fire(Class eventType) {
+        return DhApi.events.fireAllEvents(eventType, null);
+    }
+
+    private static int delayedTimers() {
         return delayedTimerNames().size();
     }
 

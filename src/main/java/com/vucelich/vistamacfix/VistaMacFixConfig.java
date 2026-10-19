@@ -14,7 +14,7 @@ public final class VistaMacFixConfig {
                 .comment("When true, a Vista television feed does not change Distant Horizons config and does not draw DH LODs. Set false to restore Vista's own Distant Horizons compat.")
                 .define("dhGuard", true);
         TV_UPDATE_FPS = builder
-                .comment("Optional cap on Vista live-feed updates per second. 0 leaves Vista's update_fps alone. Vista's scheduler stores that cap as updates per tick (frames per second divided by 20).")
+                .comment("Optional cap on Vista live-feed updates, in frames per second, the same unit as Vista's update_fps. 0 leaves that setting alone. Values are clamped to Vista's range of 1 to 60, then divided by 20 to match the scheduler's per-tick rate. The scheduler still will not apply a rate above 1.")
                 .defineInRange("tvUpdateFps", 0.0, 0.0, 60.0);
         SPEC = builder.build();
     }

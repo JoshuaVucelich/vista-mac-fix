@@ -11,6 +11,10 @@ base {
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
+sourceSets {
+    probe
+}
+
 neoForge {
     version = project.neo_version
 
@@ -22,7 +26,15 @@ neoForge {
             if (project.hasProperty('dhProbe')) {
                 systemProperty 'vista_mac_fix.dhProbe', 'true'
                 systemProperty 'vista_mac_fix.dhProbeExit', 'true'
-                systemProperty 'vista_mac_fix.dhProbeFile', 'run/dh-probe.txt'
+                systemProperty 'vista_mac_fix.dhProbeFile', file('run/dh-probe.txt').absolutePath
+            }
+            additionalRuntimeClasspathConfiguration.dependencies.add(
+                    project.dependencies.create(sourceSets.probe.output)
+            )
+            // The probe classes are a separate source set. The run must compile
+            // them, and the release jar must not.
+            tasks.named('runClient').configure {
+                dependsOn tasks.named('compileProbeJava')
             }
         }
         configureEach {
@@ -59,6 +71,9 @@ dependencies {
     compileOnly "maven.modrinth:moonlight:fAIfWX6M"
     // DH 3.0.3-b API, used to compile the before-render bind. Not shipped.
     compileOnly "maven.modrinth:distanthorizons:oYXIfeus"
+    probeCompileOnly sourceSets.main.output
+    probeCompileOnly "maven.modrinth:distanthorizons:oYXIfeus"
+    probeCompileOnly 'org.slf4j:slf4j-api:2.0.9'
     testImplementation "maven.modrinth:vista-aeronautics-fix:q4MJ1X5o"
     testImplementation 'org.slf4j:slf4j-api:2.0.9'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
