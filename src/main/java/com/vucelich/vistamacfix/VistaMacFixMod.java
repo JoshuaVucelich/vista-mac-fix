@@ -7,6 +7,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.fml.loading.FMLLoader;
 import net.neoforged.neoforge.common.NeoForge;
@@ -14,10 +15,11 @@ import net.neoforged.neoforge.common.NeoForge;
 @Mod(value = VistaMacFixMod.MOD_ID, dist = Dist.CLIENT)
 public final class VistaMacFixMod {
     public static final String MOD_ID = "vista_mac_fix";
-    public static final String VERSION = "1.0.6";
+    public static final String VERSION = "1.0.7";
     public static final Logger LOGGER = LoggerFactory.getLogger("vista_mac_fix");
 
     public VistaMacFixMod(IEventBus modBus, ModContainer container) {
+        container.registerConfig(ModConfig.Type.CLIENT, VistaMacFixConfig.SPEC);
         if (FMLLoader.getDist() == Dist.CLIENT) {
             // Mixin configs are already prepared. Drop vistafix's broken overwrite
             // before Vista's renderer class is loaded.
@@ -40,6 +42,26 @@ public final class VistaMacFixMod {
         // Sable's resize, which may not run until an airship is drawn.
         arm("net.caffeinemc.mods.sodium.client.gl.device.GLRenderDevice$ImmediateCommandList", "Sodium");
         arm("dev.ryanhcode.sable.sublevel.render.fancy.BucketRenderBuffer", "Sable");
+        bindDistantHorizons();
+        if (DhFeedProbe.enabled()) {
+            DhFeedProbe.run();
+        }
+    }
+
+    private static void bindDistantHorizons() {
+        if (!DistantHorizonsGate.loaderHas(DistantHorizonsGate.DISTANT_HORIZONS)) {
+            LOGGER.info("Vista Mac Fix: Distant Horizons is not installed; feed guard stays dormant");
+            return;
+        }
+        try {
+            Class.forName(
+                    "com.vucelich.vistamacfix.dh.DistantHorizonsFeedBinding",
+                    true,
+                    VistaMacFixMod.class.getClassLoader()
+            ).getMethod("bind").invoke(null);
+        } catch (Throwable error) {
+            LOGGER.warn("Vista Mac Fix: could not bind the Distant Horizons feed guard", error);
+        }
     }
 
     private static void arm(String binaryName, String label) {

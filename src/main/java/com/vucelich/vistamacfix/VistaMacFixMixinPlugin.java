@@ -25,7 +25,7 @@ public final class VistaMacFixMixinPlugin implements IMixinConfigPlugin {
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
         VistaFixNeutralizer.neutralize(false);
-        return true;
+        return DistantHorizonsGate.applyMixin(mixinClassName);
     }
 
     @Override

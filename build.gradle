@@ -19,6 +19,11 @@ neoForge {
             client()
             // This VM is not a Mac. The property turns the same CPU path on.
             systemProperty 'vista_mac_fix.force', 'true'
+            if (project.hasProperty('dhProbe')) {
+                systemProperty 'vista_mac_fix.dhProbe', 'true'
+                systemProperty 'vista_mac_fix.dhProbeExit', 'true'
+                systemProperty 'vista_mac_fix.dhProbeFile', 'run/dh-probe.txt'
+            }
         }
         configureEach {
             logLevel = org.slf4j.event.Level.INFO
@@ -52,12 +57,18 @@ dependencies {
     // NeoForge files; the shared version numbers also publish Fabric jars.
     compileOnly "maven.modrinth:vista_tv:XDmEbLHW"
     compileOnly "maven.modrinth:moonlight:fAIfWX6M"
+    // DH 3.0.3-b API, used to compile the before-render bind. Not shipped.
+    compileOnly "maven.modrinth:distanthorizons:oYXIfeus"
     testImplementation "maven.modrinth:vista-aeronautics-fix:q4MJ1X5o"
     testImplementation 'org.slf4j:slf4j-api:2.0.9'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testImplementation 'org.ow2.asm:asm:9.7'
     testImplementation 'org.ow2.asm:asm-tree:9.7'
+    def mixinJar = configurations.compileClasspath.files.find { it.name.contains('sponge-mixin') }
+    if (mixinJar != null) {
+        testImplementation files(mixinJar)
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -67,6 +78,10 @@ tasks.withType(JavaCompile).configureEach {
 
 tasks.named('test', Test) {
     useJUnitPlatform()
+    def dhJar = configurations.compileClasspath.files.find { it.name.toLowerCase().contains('distanthorizon') }
+    if (dhJar != null) {
+        systemProperty 'vista.dh.jar', dhJar.absolutePath
+    }
 }
 
 tasks.named('jar', Jar) {

@@ -1,6 +1,6 @@
 # Vista Mac Fix
 
-Client-only NeoForge 1.21.1 mod (`vista_mac_fix`), version 1.0.6.
+Client-only NeoForge 1.21.1 mod (`vista_mac_fix`), version 1.0.7.
 
 Joshua's Mac (Apple M4, macOS 27, OpenGL 4.1) aborts in the driver with `gldCopyBufferSubData: NEEDS IMPLEMENTATION`. Vista `1.21.1-4.4.11` is the build in the crash. Vista `1.21.1-5.5.7` does not replace the copy. The calls that reach the driver are Sodium's staging upload (`GL31C.glCopyBufferSubData` in `GLRenderDevice$ImmediateCommandList.copyBufferSubData`) and Sable's airship buffer resize (`ARBCopyBuffer.glCopyBufferSubData` in `BucketRenderBuffer.resize`).
 
@@ -26,15 +26,24 @@ vistafix has no gameplay classes. The mixin is listed in the common mixin array 
 ./gradlew test build
 ```
 
-The jar is `build/libs/vista_mac_fix-1.0.6.jar`. Put it in the client `mods` folder. Compiling the television mixin pulls the NeoForge Vista `1.21.1-4.4.11` and Moonlight `1.21.1-3.7.2` jars from the Modrinth Maven repository (version ids, because the shared version numbers also publish Fabric jars). Those jars are compile-only.
+The jar is `build/libs/vista_mac_fix-1.0.7.jar`. Put it in the client `mods` folder. Compiling the television mixin pulls the NeoForge Vista `1.21.1-4.4.11` and Moonlight `1.21.1-3.7.2` jars from the Modrinth Maven repository (version ids, because the shared version numbers also publish Fabric jars). The Distant Horizons bind compiles against Distant Horizons `3.0.3-b` (Modrinth version `oYXIfeus`). Those jars are compile-only.
+
+## Distant Horizons and television feeds
+
+Vista 4.4.11's `DistantHorizonsCompat.decorateRenderWithoutLOD` writes Distant Horizons horizontal quality on every live-feed update, and in OFF mode it also toggles rendering. Distant Horizons fires its config listeners on every API write. The horizontal-quality listener starts a thread named `DH-AbstractDelayedConfigTimer` and, two seconds later, clears LOD render data. That is the flicker when a television is active.
+
+With both `vista` and `distanthorizons` loaded, this mod's mixin returns the feed task once and does not call the Distant Horizons config API. A `DhApiBeforeRenderEvent` cancels LOD drawing while that feed is on the stack, so the television still renders exactly once and the world LODs stay put. Client config `dhGuard` (default true) turns the fix off. `tvUpdateFps` (default 0) optionally caps Vista's live-feed scheduler. 0 leaves Vista's `update_fps` alone. Vista stores that cap as updates per tick, which is frames per second divided by 20.
+
+`-Dvista_mac_fix.dhProbe=true` calls the feed wrapper five times during client setup and writes `run/dh-probe.txt`. `-Dvista_mac_fix.dhProbeExit=true` then exits. `./gradlew runClient -PdhProbe` sets both.
 
 ## In game
 
 1. Start the client and open `latest.log`.
-2. On a Mac, look for `Vista Mac Fix 1.0.6 loaded. Apple buffer-copy fallback active=true`.
+2. On a Mac, look for `Vista Mac Fix 1.0.7 loaded. Apple buffer-copy fallback active=true`.
 3. Look for `redirect applied to Sodium` and `redirect applied to Sable`. The first real copy also logs `redirected Sodium` or `redirected Sable`.
 4. Join the world. A powered television on an assembled Sable ship should keep its screen, with or without Vista Aeronautics Fix installed. With that mod installed, the log says `stopped vistafix TvRendererMixin`, or that this mod is drawing the screen so the missing call does not run.
 5. The client should stay open. `drew a Vista television on a Sable contraption` is written the first time a ship television is drawn.
+6. With Distant Horizons installed, look for `Distant Horizons feed guard mixin applied` and `bound DhApiBeforeRenderEvent`. The client config file is `config/vista_mac_fix-client.toml`.
 
 ## License
 

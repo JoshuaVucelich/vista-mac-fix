@@ -7,7 +7,9 @@
   "client": [
     "SodiumCopyBufferMixin",
     "SableCopyBufferMixin",
-    "TvContraptionMixin"
+    "TvContraptionMixin",
+    "DistantHorizonsFeedMixin",
+    "VistaFeedRateMixin"
   ],
   "injectors": {
     "defaultRequire": 0
